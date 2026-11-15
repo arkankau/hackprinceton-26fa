@@ -2,7 +2,7 @@
 
 Indoor wayfinding for blind and low-vision visitors, built on CoStar Group's data for the same buildings: Matterport 3D twins, Vexcel aerial imagery and CoStar building records (Houston and Los Angeles).
 
-A traveller carries an iPhone in a back pocket and wears a Raspberry Pi collar with two servos. The phone counts steps and reads its compass, the Pi keeps the traveller on the building's walk graph, the phone speaks each instruction, and the collar taps the left or right shoulder at each turn. A caretaker can send trips and watch progress from a second app.
+A traveller carries an iPhone in a back pocket and wears a belt with a Raspberry Pi and two servo pods, one on each hip. The phone counts steps and reads its compass, the Pi keeps the traveller on the building's walk graph, the phone speaks each instruction, and the belt taps the left or right hip at each turn. A caretaker can send trips and watch progress from a second app.
 
 **Thesis: put the AI ahead of the walk, not inside it.** Routing a person through a building is A* on a graph, and left versus right is trigonometry. That part is deterministic, takes milliseconds and can't hallucinate a turn into a stairwell. What the geometry can't tell you is what's dangerous, what can be felt or heard, and where the accessible entrance is. A Deep Agent works that out once per building, before anyone arrives, and caches it. The second visitor pays nothing.
 
@@ -30,7 +30,7 @@ flowchart LR
     phone["phone: steps + compass"] --> pdr["pdr.py<br/>position on the walk graph"]
     pdr --> nav["navigator<br/>A* + maneuvers"]
     nav --> say["spoken instructions"]
-    nav --> band["Pi servo collar"]
+    nav --> band["Pi servo belt"]
   end
   subgraph exc["3. When the plan breaks: Deep Agents, with the traveller's approval"]
     ex["exception agent<br/>commit_reroute"] --> nav
@@ -69,6 +69,8 @@ Both use human-in-the-loop `interrupt_on`, so nothing changes until the travelle
 - **Explorer agent** (`nudge/agents/explorer.py`). For when the map runs out: the traveller walked somewhere no scan covers, or the building has no scan or dossier yet. It uses `hazard-scout`, `site-surveyor` and `building-cartographer`. Its one acting tool, `commit_plan`, can only set a destination the router resolves, add a portal that `building.candidates_portals` proposed (marked uncertain until confirmed), or block a pano. It never hands the navigator coordinates.
 
 ## The belt (Raspberry Pi, two servos)
+
+The wearable that is built is a belt: a Raspberry Pi, a PCA9685 board and two servo pods, one on each hip, with the traveller's iPhone as the step and heading sensor. [docs/belt.md](docs/belt.md) describes it and how the server hands it a route. The first design was a collar tapping the shoulders, and the driver below was written for it, so its text and `docs/band-pi.md` still say collar and shoulder.
 
 `nudge/band.py` drives two SG90 servos on BCM 12 and 13. Direction is which shoulder taps and magnitude is how many strokes: one light stroke for a slight turn, two for a turn, three on both for arrival or a u-turn, one long press on both when off route. Steering is a single light tap toward the side to turn, at most once every 1.5 s. Cues have ranks (hazard, then state changes, then maneuvers, then steering), so a turn is never lost to a steering tap.
 
@@ -186,11 +188,11 @@ The step-by-step guide (hotspot, addresses, calibration, troubleshooting) is [do
 
 | Track | Where it shows |
 |---|---|
-| CoStar "Inside and Out" | **Data:** all three layers for the same address, and each one changes a route or a spoken instruction. **Agentic depth:** the agents plan, delegate, look, validate against the router, audit and re-delegate. **Usefulness:** a blind visitor gets an accessible-entrance briefing and hazard-aware routes in a building they've never been to. **Demo:** the Pi collar, the iOS apps, the debug view. |
+| CoStar "Inside and Out" | **Data:** all three layers for the same address, and each one changes a route or a spoken instruction. **Agentic depth:** the agents plan, delegate, look, validate against the router, audit and re-delegate. **Usefulness:** a blind visitor gets an accessible-entrance briefing and hazard-aware routes in a building they've never been to. **Demo:** the Pi belt, the iOS apps, the debug view. |
 | LangChain Deep Agents | **Complex use case:** a multi-floor survey with vision and geometry. **Features used:** `create_deep_agent` in three agents, subagents via `task()`, `TodoListMiddleware`, `CompositeBackend` routing `/dossier`, `/memories` and `/agent` to disk, `memory=["/agent/AGENTS.md"]`, `skills=["/agent/skills/"]`, `FilesystemPermission` read-only on `/agent`, and human-in-the-loop `interrupt_on` on `commit_reroute` and `commit_plan`. `langgraph.json` serves the dossier and exception agents in Studio. |
 | Photon | iMessage is the caretaker's channel: pairing by code, calm status messages, and answers to "where are they?" from live state. |
 | Amazon Practical AI | A real user and problem, agents that plan and act, adaptive replanning with the traveller's approval, and a caretaker channel the family already has. |
-| Best Physical AI | The servo collar: AI-prepared guidance drives hardware that taps the traveller. |
+| Best Physical AI | The servo belt: AI-prepared guidance drives hardware that taps the traveller. |
 
 ## Limitations
 
@@ -210,7 +212,8 @@ The step-by-step guide (hotspot, addresses, calibration, troubleshooting) is [do
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Data contracts and why routing is deterministic. |
 | [docs/live-demo.md](docs/live-demo.md) | Running a real walk: Pi, phone, hotspot, calibration, troubleshooting. |
-| [docs/band-pi.md](docs/band-pi.md) | The servo collar: wiring, cue table, why it differs from the ESP32 band. |
+| [docs/belt.md](docs/belt.md) | The belt: what is built and how the server hands it a route. |
+| [docs/band-pi.md](docs/band-pi.md) | The earlier servo collar driver: wiring, cue table, why it differs from the ESP32 band. |
 | [docs/outdoor.md](docs/outdoor.md) | The street-to-door leg and where each piece of data comes from. |
 | [docs/voice.md](docs/voice.md) | The voice endpoint and what the traveller can say. |
 | [docs/caretaker.md](docs/caretaker.md) | The iMessage caretaker channel. |
